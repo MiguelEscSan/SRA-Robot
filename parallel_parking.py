@@ -241,6 +241,7 @@ def main():
         min_obstacle_distance=80
     )
     
+    # TODO: Revisar esta función, ya que asume que siempre que se evite un obstáculo, la siguiente distancia será la del segundo obstáculo
     # SEGUNDO PASO: Evitar la lata y encontrar la segunda lata. Una vez encontrada caminar hacia ella hasta la mitad de la distancia
     turn_direction = "left" if initial_direction == "right" else "right"
     avoid_obstacle(
