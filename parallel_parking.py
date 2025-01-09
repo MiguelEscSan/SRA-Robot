@@ -87,12 +87,15 @@ def follow_obstacle(movement, ultrasonic_sensor, distance, tolerance_distance):
         ultrasonic_sensor (UltrasonicSensor): Sensor ultrasónico.
         distance (int): Distancia a avanzar o retroceder (en cm).
         tolerance_distance (int): Distancia de tolerancia para avanzar o retroceder (en cm).
-        
+
+    Returns:
+        tuple: (última distancia, ángulo actual, dirección inicial).
     """
 
     last_distance = ultrasonic_sensor.distance_centimeters
     current_degrees = 0  # Ángulo actual del robot
     last_degrees = 0  # Último ángulo registrado cuando se encontró el obstáculo
+    initial_direction = None  # Dirección inicial en la que se encontró el obstáculo
 
     while True:
         current_distance = ultrasonic_sensor.distance_centimeters
@@ -112,6 +115,11 @@ def follow_obstacle(movement, ultrasonic_sensor, distance, tolerance_distance):
             # Moverse al ángulo donde se encontró el obstáculo
             movement.turn(best_angle)
             current_degrees += best_angle
+
+            # Establecer la dirección inicial si aún no se ha establecido
+            if initial_direction is None:
+                initial_direction = "left" if prefer_left else "right"
+                
         elif current_distance > tolerance_distance:
             # Si está lejos del obstáculo, avanzar
             print("Too far from obstacle, moving closer...")
@@ -127,7 +135,24 @@ def follow_obstacle(movement, ultrasonic_sensor, distance, tolerance_distance):
         last_distance = current_distance
         last_degrees = current_degrees
 
-def find_line(movement, color_sensor):
+    return last_distance, current_degrees, initial_direction
+        
+def avoid_obstacle(movement, ultrasonic_sensor, object_distance, tolerance_distance, turn_direction, turn_angle=15, step_distance=15):
+    """
+    Evita un obstáculo girando hasta que no haya obstáculo en frente o la distancia sea mayor a un umbral.
+    """
+    # Girar hasta perder el obstáculo o que la distancia del obstáculo sea mayor a un umbral
+    while True:
+        turn_angle = turn_angle if turn_direction == "left" else -turn_angle
+        movement.turn(turn_angle)
+        if ultrasonic_sensor.distance_centimeters > object_distance + tolerance_distance:
+            break
+        
+    # Caminar hacia delante una cierta distancia
+    movement.move(step_distance)
+
+
+def find_line(movement, ultrasonic_sensor, color_sensor, object_distance, tolerance_distance, turn_direction, turn_angle=15, step_distance=15, line_color=1):
     """
     This function continuously checks for a black line using the color sensor.
     When a black line is detected, it stops the robot.
@@ -136,14 +161,26 @@ def find_line(movement, color_sensor):
         movement (RobotMovement): Object handling the robot's movement.
         color_sensor (ColorSensor): Color sensor.
     """
+    
+    turned_degrees = 0
+    
+    # Gira hasta encontrar una distancia mayor al objeto
+    while True:
+        turn_angle = turn_angle if turn_direction == "left" else -turn_angle
+        movement.turn(turn_angle)
+        turned_degrees += turn_angle
+        if ultrasonic_sensor.distance_centimeters > object_distance + tolerance_distance:
+            break
 
     while True:
+        # Move forward
+        movement.move(step_distance)
+        
         # Color function returns 1 if black line is detected
-        if color_sensor.color() == 1:
+        if color_sensor.color() == line_color:
             movement.stop()
-            movement.turn(90)
-            print("Black line detected. Stopping robot.")
-            return True
+            movement.turn(-turned_degrees)
+            break
     
 def main():
 
@@ -184,13 +221,14 @@ def main():
     
     # PRIMER PASO: Encontrar y seguir el obstaculo
     initial_distance = ultrasonic_sensor.distance_centimeters
-    follow_obstacle(movement=movement,ultrasonic_sensor=ultrasonic_sensor, distance=5, tolerance_distance=10)
+    last_distance, current_degrees, initial_direction = follow_obstacle(movement=movement,ultrasonic_sensor=ultrasonic_sensor, distance=5, tolerance_distance=10)
     
     # SEGUNDO PASO: Evitar la lata y encontrar la segunda lata. Una vez encontrada caminar hacia ella hasta la mitad de la distancia
-    
+    turn_direction = "left" if initial_direction == "right" else "right"
+    avoid_obstacle(movement, ultrasonic_sensor, object_distance=last_distance, tolerance_distance=10, turn_direction=turn_direction)
     
     # TERCER PASO: Girar y caminar hasta detectar la linea negra
-    
+    find_line(movement, ultrasonic_sensor, color_sensor, object_distance=last_distance, tolerance_distance=10, turn_direction=turn_direction)
 
     end_time = time()
     sound.beep()
