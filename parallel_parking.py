@@ -127,7 +127,24 @@ def follow_obstacle(movement, ultrasonic_sensor, distance, tolerance_distance):
         last_distance = current_distance
         last_degrees = current_degrees
 
-def find_line(movement, color_sensor):
+def turn_till_parallel(movement, ultrasonic_sensor, tolerance_distance=40):
+    """
+    This function, turn robot until it is parallel to the black line.
+    When the color sensor detects an object in less than 40 cm, the robot stops.
+
+    Args:
+        movement (RobotMovement): Object handling the robot's movement.
+        ultrasonic_sensor (UltrasonicSensor): Ultrasonic sensor.
+    """
+
+    while True:
+        movement.turn(10)
+        if ultrasonic_sensor.distance_centimeters < tolerance_distance:
+            movement.stop()
+            return True
+
+
+def find_line(movement, color_sensor, ultrasonic_sensor):
     """
     This function continuously checks for a black line using the color sensor.
     When a black line is detected, it stops the robot.
@@ -141,7 +158,7 @@ def find_line(movement, color_sensor):
         # Color function returns 1 if black line is detected
         if color_sensor.color() == 1:
             movement.stop()
-            movement.turn(90)
+            turn_till_parallel(movement, ultrasonic_sensor)
             print("Black line detected. Stopping robot.")
             return True
     
