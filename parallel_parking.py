@@ -7,6 +7,7 @@ from ev3dev2.motor import LargeMotor, OUTPUT_B, OUTPUT_C
 from time import time
 from movement import RobotMovement
 import threading
+import math
 
 def find_obstacle(movement, ultrasonic_sensor, threshold=0, step_angle=5, prefer_left=True):
     """
@@ -23,6 +24,7 @@ def find_obstacle(movement, ultrasonic_sensor, threshold=0, step_angle=5, prefer
     Returns:
         tuple: (distancia mínima, ángulo correspondiente).
     """
+    print("----------------------------- Searching for obstacle -----------------------------")
     min_distance = float('inf')
     best_angle = 0
     current_angle = 0
@@ -41,11 +43,13 @@ def find_obstacle(movement, ultrasonic_sensor, threshold=0, step_angle=5, prefer
     distance_thread.start()
 
     try:
-        # Crear la secuencia de ángulos: primero 90 a un lado, luego 90 al otro
+        # Crear la secuencia de ángulos: primero 45 a un lado, luego 45 al otro
         if prefer_left:
-            angles_to_check = list(range(0, -91, -step_angle)) + [90] + list(range(step_angle, 91, step_angle))
+            angles_to_check = list(range(0, -61, -step_angle)) + list(range(0, 61, step_angle))
+            # angles_to_check = list(range(0, -91, -step_angle))
         else:
-            angles_to_check = list(range(0, 91, step_angle)) + [-90] + list(range(-step_angle, -91, -step_angle))
+            angles_to_check = list(range(0, 61, step_angle)) + list(range(-0, -61, -step_angle))
+            # angles_to_check = list(range(0, 91, step_angle))
 
         for angle in angles_to_check:
             movement.turn(angle - current_angle)
@@ -68,6 +72,8 @@ def find_obstacle(movement, ultrasonic_sensor, threshold=0, step_angle=5, prefer
         # Detener el hilo y esperar a que termine
         stop_flag.set()
         distance_thread.join()
+    
+    print("----------------------------- Obstacle found -----------------------------")
 
     return min_distance, best_angle
 
@@ -89,19 +95,24 @@ def follow_obstacle(movement, ultrasonic_sensor, distance, tolerance_distance, m
         tuple: (última distancia, ángulo actual, dirección inicial).
     """
 
-    last_distance = ultrasonic_sensor.distance_centimeters
+    last_distance = 0
     current_degrees = 0  # Ángulo actual del robot 
     last_degrees = 0  # Último ángulo registrado cuando se encontró el obstáculo
     initial_direction = None  # Dirección inicial en la que se encontró el obstáculo
 
     while True:
         current_distance = ultrasonic_sensor.distance_centimeters
+        print("Current distance: ", current_distance)
 
-        print("current_distance: {:.2f}".format(current_distance))
-
-        if current_distance is None or current_distance > min_obstacle_distance or current_distance > last_distance:
+        if current_distance is None or current_distance > min_obstacle_distance or math.trunc(current_distance) > math.trunc(last_distance):
             # Si no detecta el obstáculo o se está alejando
             print("Obstacle lost, searching...")
+
+            print("current distance > last_distance: ", current_distance > last_distance)
+            print("current distance > min_obstacle_distance: ", current_distance > min_obstacle_distance)
+            if current_distance > last_distance:
+                print("current_distance: ", current_distance)
+                print("last_distance: ", last_distance)
 
             # Determinar la preferencia de giro basado en los últimos ángulos registrados
             prefer_left = last_degrees > current_degrees
@@ -125,12 +136,10 @@ def follow_obstacle(movement, ultrasonic_sensor, distance, tolerance_distance, m
             movement.move(distance)  # Avanzar 5 cm
             
         # TODO: Revisar si es necesario agregar el caso para volver hacia atrás porque puede generar un loop infinito
-        elif current_distance < tolerance_distance:
+        elif current_distance <= tolerance_distance:
             # Si está demasiado cerca del obstáculo, retroceder
             print("Too close to obstacle, moving back...")
             movement.move(-distance)  # Retroceder 5 cm
-            
-        else:
             break
 
         last_distance = current_distance
@@ -152,18 +161,57 @@ def avoid_obstacle(movement, ultrasonic_sensor, object_distance, tolerance_dista
         turn_angle (int): Ángulo de giro en cada paso (en grados).
         step_distance (int): Distancia a avanzar o retroceder (en cm).
     """
+    print("----------------------------- Avoiding obstacle -----------------------------")
     # Girar hasta perder el obstáculo o que la distancia del obstáculo sea mayor a un umbral
+    turn_angle = turn_angle if turn_direction == "left" else -turn_angle
     while True:
-        turn_angle = turn_angle if turn_direction == "left" else -turn_angle
         movement.turn(turn_angle)
-        if ultrasonic_sensor.distance_centimeters > object_distance + tolerance_distance:
+        second_object_distance = ultrasonic_sensor.distance_centimeters
+        if second_object_distance > object_distance + tolerance_distance:
             break
-        
+
     # Caminar hacia delante una cierta distancia
-    movement.move(step_distance)
+    movement.move(step_distance + object_distance)
+
+    # Giramos de vuelta para poder encontrar el segundo obstáculo
+    movement.turn(-turn_angle)
+    
+
+    return second_object_distance
+
+def avoid_second_obstacle(movement, ultrasonic_sensor, object_distance, tolerance_distance, turn_direction, turn_angle=15):
+    """
+    Evita un obstáculo girando hasta que no haya obstáculo en frente o la distancia sea mayor a un umbral.
+    Luego, camina hacia adelante una cierta distancia.
+    
+    Args:
+        movement (RobotMovement): Objeto que maneja el movimiento del robot.
+        ultrasonic_sensor (UltrasonicSensor): Sensor ultrasónico.
+        object_distance (int): Distancia del obstáculo (en cm).
+        tolerance_distance (int): Distancia añadida al objeto para considerar que no hay obstáculo (en cm).
+        turn_direction (str): Dirección de giro ("left" o "right").
+        turn_angle (int): Ángulo de giro en cada paso (en grados).
+        step_distance (int): Distancia a avanzar o retroceder (en cm).
+    """
+    print("----------------------------- Avoiding second obstacle -----------------------------")
+    turned_degrees = 0
+
+    # Girar hasta perder el obstáculo o que la distancia del obstáculo sea mayor a un umbral
+    turn_angle = -turn_angle if turn_direction == "left" else turn_angle
+    while True:
+        movement.turn(turn_angle)
+        turned_degrees += turn_angle
+        second_object_distance = ultrasonic_sensor.distance_centimeters
+        if second_object_distance > object_distance + tolerance_distance:
+            break
+
+    # Giramos un poco más para evitar el obstáculo
+    movement.turn(turn_angle)
+
+    return second_object_distance, turned_degrees
 
 
-def find_line(movement, ultrasonic_sensor, color_sensor, object_distance, tolerance_distance, turn_direction, turn_angle=15, step_distance=15, line_color=1):
+def find_line(movement, color_sensor, turned_degrees, step_distance=15, line_color=1):
     """
     Esta función trata de girar hasta encontrar una distancia mayor al objeto y luego camina hacia adelante hasta encontrar una línea negra.
     Encontrada la línea, se detiene y gira hacia la dirección inicial de la que giró para encontrar la línea.
@@ -179,23 +227,13 @@ def find_line(movement, ultrasonic_sensor, color_sensor, object_distance, tolera
         step_distance (int): Distancia a avanzar o retroceder (en cm).
         line_color (int): Color de la línea a detectar. Negro es 1 y Blanco es 6.
     """
-    # Grados que ha girado
-    turned_degrees = 0
-    
-    # Gira hasta encontrar una distancia mayor al objeto
-    while True:
-        turn_angle = turn_angle if turn_direction == "left" else -turn_angle
-        movement.turn(turn_angle)
-        turned_degrees += turn_angle
-        if ultrasonic_sensor.distance_centimeters > object_distance + tolerance_distance:
-            break
-
+    print("----------------------------- Find line -----------------------------")
     while True:
         # Move forward
         movement.move(step_distance)
-        
+        print("Color: ", color_sensor.color)
         # Color function returns 1 if black line is detected
-        if color_sensor.color() == line_color:
+        if color_sensor.color == line_color:
             movement.stop()
             movement.turn(-turned_degrees)
             break
@@ -208,7 +246,7 @@ def main():
 
     # Inicializar sensores
     ultrasonic_sensor = UltrasonicSensor(INPUT_1) 
-    # color_sensor = ColorSensor(INPUT_2)
+    color_sensor = ColorSensor(INPUT_2)
 
     # Inicializar sonido
     sound = Sound()
@@ -216,7 +254,7 @@ def main():
     # Parámetros del robot
     WHEEL_DIAMETER = 5.5
     DISTANCE_BETWEEN_WHEELS = 19.79
-    SPEED = 30
+    SPEED = 5
     TRANSMISSION_RATIO = 3
 
     # Clase que maneja el movimiento del robot
@@ -238,30 +276,50 @@ def main():
         movement=movement,
         ultrasonic_sensor=ultrasonic_sensor, 
         distance=5, 
-        tolerance_distance=10, 
+        tolerance_distance=25, 
         min_obstacle_distance=80
     )
     
     # TODO: Revisar esta función, ya que asume que siempre que se evite un obstáculo, la siguiente distancia será la del segundo obstáculo
     # SEGUNDO PASO: Evitar la lata y encontrar la segunda lata. Una vez encontrada caminar hacia ella hasta la mitad de la distancia
     turn_direction = "left" if initial_direction == "right" else "right"
-    avoid_obstacle(
+    last_distance = avoid_obstacle(
+        movement, 
+        ultrasonic_sensor, 
+        object_distance=last_distance, 
+        tolerance_distance=5, 
+        turn_direction=turn_direction,
+        step_distance=20,
+        turn_angle=10
+    )
+
+    # TERCER PASO:Encontrar el segundo obstáculo
+    second_obstacle_distance, current_degrees = find_obstacle(
+        movement, 
+        ultrasonic_sensor, 
+        prefer_left = turn_direction == "left"
+    )
+
+    print("Second obstacle distance: ", second_obstacle_distance)
+    print("Current degrees: ", current_degrees)
+
+    # CUARTO PASO: Girar para esquivar el segundo obstáculo
+    _, current_degrees = avoid_second_obstacle(
         movement, 
         ultrasonic_sensor, 
         object_distance=last_distance, 
         tolerance_distance=5, 
         turn_direction=turn_direction
     )
-    
-    # TERCER PASO: Girar y caminar hasta detectar la linea negra. Luego, girar hacia la dirección inicial
-    # find_line(
-    #     movement, 
-    #     ultrasonic_sensor, 
-    #     color_sensor, 
-    #     object_distance=last_distance, 
-    #     tolerance_distance=5, 
-    #     turn_direction=turn_direction
-    # )
+
+    # QUINTO PASO: Caminar hasta encontrar la línea y girar hacia la dirección inicial
+    find_line(
+        movement, 
+        color_sensor, 
+        turned_degrees=current_degrees,
+        step_distance=15,
+        line_color=4
+    )
 
     end_time = time()
     sound.beep()

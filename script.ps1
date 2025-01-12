@@ -1,6 +1,6 @@
 # Variables
 $User = "robot"
-$Robot = "ev3dev"
+$Robot = "169.254.197.53"
 $Password = "maker"
 $RemoteDir = "/home/robot/competicion"
 
