@@ -12,20 +12,25 @@ class RobotMovement:
 
     def turn(self, degrees):
         wheel_circunference = pi * self.wheel_diameter
+
+        print("Entre a girar en la clase RobotMovement")
         
         turn_distance = (wheel_circunference * abs(degrees)) / 360
         
         wheel_turn_degrees = ((turn_distance / wheel_circunference) * 360) * self.transmission_ratio
         
         direction = -1 if degrees > 0 else 1  # Clockwise: degrees > 0; anticlockwise: degrees < 0
+
+        print("direction al girar desde RobotMovement: ", direction)
         
         self.motor_left.reset()
         self.motor_right.reset()
         
-        self.motor_left.on_for_degrees(SpeedPercent(self.speed * direction), wheel_turn_degrees * direction, brake=True, block=False)
+        self.motor_left.on_for_degrees(SpeedPercent(-self.speed * direction), wheel_turn_degrees * direction, brake=True, block=False)
         self.motor_right.on_for_degrees(SpeedPercent(-self.speed * direction), -wheel_turn_degrees * direction, brake=True, block=True)
     
     def move(self, distance):
+        print("Entre a moverme en la clase RobotMovement")
         wheel_circunference = pi * self.wheel_diameter
         advance_degrees = ((distance / wheel_circunference) * 360) * self.transmission_ratio
         

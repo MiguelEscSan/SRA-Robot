@@ -7,7 +7,6 @@ from ev3dev2.motor import LargeMotor, OUTPUT_B, OUTPUT_C
 from time import time
 from movement import RobotMovement
 import threading
-import time
 
 def find_obstacle(movement, ultrasonic_sensor, threshold=0, step_angle=5, prefer_left=True):
     """
@@ -44,12 +43,12 @@ def find_obstacle(movement, ultrasonic_sensor, threshold=0, step_angle=5, prefer
     try:
         # Crear la secuencia de ángulos: primero 90 a un lado, luego 90 al otro
         if prefer_left:
-            angles_to_check = list(range(0, -91, -step_angle)) + list(range(-step_angle, 91, step_angle))
+            angles_to_check = list(range(0, -91, -step_angle)) + [90] + list(range(step_angle, 91, step_angle))
         else:
-            angles_to_check = list(range(0, 91, step_angle)) + list(range(step_angle, -91, -step_angle))
+            angles_to_check = list(range(0, 91, step_angle)) + [-90] + list(range(-step_angle, -91, -step_angle))
 
         for angle in angles_to_check:
-            movement.turn_to(angle - current_angle)
+            movement.turn(angle - current_angle)
             current_angle = angle
 
             with distance_lock:
@@ -60,11 +59,11 @@ def find_obstacle(movement, ultrasonic_sensor, threshold=0, step_angle=5, prefer
                 best_angle = current_angle
 
             if min_distance <= threshold:
-                print(f"Threshold reached: {min_distance} cm at angle {best_angle}")
+                # print(f"Threshold reached: {min_distance} cm at angle {best_angle}")
                 break
 
         # Regresar al ángulo inicial
-        movement.turn_to(-current_angle)
+        movement.turn(-current_angle)
     finally:
         # Detener el hilo y esperar a que termine
         stop_flag.set()
@@ -97,6 +96,8 @@ def follow_obstacle(movement, ultrasonic_sensor, distance, tolerance_distance, m
 
     while True:
         current_distance = ultrasonic_sensor.distance_centimeters
+
+        print("current_distance: {:.2f}".format(current_distance))
 
         if current_distance is None or current_distance > min_obstacle_distance or current_distance > last_distance:
             # Si no detecta el obstáculo o se está alejando
@@ -207,14 +208,14 @@ def main():
 
     # Inicializar sensores
     ultrasonic_sensor = UltrasonicSensor(INPUT_1) 
-    color_sensor = ColorSensor(INPUT_2)
+    # color_sensor = ColorSensor(INPUT_2)
 
     # Inicializar sonido
     sound = Sound()
     
     # Parámetros del robot
     WHEEL_DIAMETER = 5.5
-    DISTANCE_BETWEEN_WHEELS = 20
+    DISTANCE_BETWEEN_WHEELS = 19.79
     SPEED = 30
     TRANSMISSION_RATIO = 3
 
@@ -253,18 +254,19 @@ def main():
     )
     
     # TERCER PASO: Girar y caminar hasta detectar la linea negra. Luego, girar hacia la dirección inicial
-    find_line(
-        movement, 
-        ultrasonic_sensor, 
-        color_sensor, 
-        object_distance=last_distance, 
-        tolerance_distance=5, 
-        turn_direction=turn_direction
-    )
+    # find_line(
+    #     movement, 
+    #     ultrasonic_sensor, 
+    #     color_sensor, 
+    #     object_distance=last_distance, 
+    #     tolerance_distance=5, 
+    #     turn_direction=turn_direction
+    # )
 
     end_time = time()
     sound.beep()
-    print(f"Total time: {end_time - start_time:.2f} seconds")
+    print("Total time: {:.2f} seconds".format(end_time - start_time))   
+
 
 if __name__ == '__main__':
     main()
