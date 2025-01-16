@@ -20,7 +20,7 @@ class RobotMovement:
         
         wheel_turn_degrees = ((turn_distance / wheel_circunference) * 360) * self.transmission_ratio
         
-        direction = -1 if degrees > 0 else 1  # Clockwise: degrees > 0; anticlockwise: degrees < 0
+        direction = -1 if degrees < 0 else 1  # Clockwise: degrees > 0; anticlockwise: degrees < 0
         
         self.motor_left.reset()
         self.motor_right.reset()

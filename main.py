@@ -39,7 +39,7 @@ def main():
         SPEED,
         TRANSMISSION_RATIO
     )
-    
+
     print("Starting competition")
     sound.beep()
 
@@ -54,26 +54,30 @@ def main():
     first_obstacle_distance, first_obstacle_angle = find_obstacle(
         movement,
         ultrasonic_sensor, 
-        threshold=30, 
+        down_threshold=0,
+        up_threshold=80, 
         step_angle=5
     )
 
-    follow_obstacle(
+    last_distance = follow_obstacle(
         movement,
         ultrasonic_sensor,
         first_obstacle_distance,
         first_obstacle_angle,
-        threshold=4
+        threshold=4,
+        security_distance=15
     )
+
+
+    print("Last_distance: {:.2f}".format(last_distance))
+
 
     # Segundo paso: Esquivar el primer obstáculo hacia la izquierda, caminar distancia umbral + distancia obstáculo y girar ciertos grados de vuelta
     avoid_first_obstacle(
         movement,
-        ultrasonic_sensor,
-        first_obstacle_distance,
-        first_obstacle_angle,
-        threshold_distance=20,
-        turn_degrees=30
+        object_distance=last_distance,
+        turn_degrees=45,
+        step_distance=10,
     )
     
     # Tercer paso: Girar y caminar mientras no se haya encontrado el segundo obstáculo hacia la derecha. Girar poco y caminar poco.
