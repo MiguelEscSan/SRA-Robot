@@ -29,9 +29,6 @@ class RobotMovement:
         self.motor_left.on_for_degrees(SpeedPercent(-self.speed), wheel_turn_degrees * direction, brake=True, block=False)
         self.motor_right.on_for_degrees(SpeedPercent(-self.speed), -wheel_turn_degrees * direction, brake=True, block=True)
 
-        # self.motor_left.on_for_degrees(SpeedPercent(-self.speed), wheel_turn_degrees, brake=True, block=False)
-        # self.motor_right.on_for_degrees(SpeedPercent(-self.speed), -wheel_turn_degrees, brake=True, block=True)
-
     def move(self, distance):
         wheel_circunference = pi * self.wheel_diameter
         advance_degrees = ((distance / wheel_circunference) * 360) * self.transmission_ratio
