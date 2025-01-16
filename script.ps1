@@ -1,6 +1,6 @@
 # Variables
 $User = "robot"
-$Robot = "169.254.238.81"
+$Robot = "169.254.226.243"
 $Password = "maker"
 $RemoteDir = "/home/robot/competicion"
 
@@ -14,6 +14,6 @@ ssh "${User}@${Robot}" "mkdir -p ${RemoteDir}"
 
 # Copiar los archivos al directorio remoto
 Write-Host "Copiando archivos al directorio remoto..."
-scp movement.py parallel_parking.py "${User}@${Robot}:${RemoteDir}"
+scp main.py movement.py reactive.py "${User}@${Robot}:${RemoteDir}"
 
 Write-Host "Despliegue completado."

@@ -24,7 +24,7 @@ def main():
     # Parámetros del robot
     WHEEL_DIAMETER = 5.5
     DISTANCE_BETWEEN_WHEELS = 19.79
-    SPEED = 20
+    SPEED = 10
     TRANSMISSION_RATIO = 3
 
     # Clase que maneja el movimiento del robot
@@ -47,7 +47,8 @@ def main():
         ultrasonic_sensor=ultrasonic_sensor, 
         distance=5, 
         tolerance_distance=25, 
-        min_obstacle_distance=150
+        min_obstacle_distance=150,
+        degrees=60
     )
     
     # TODO: Revisar esta función, ya que asume que siempre que se evite un obstáculo, la siguiente distancia será la del segundo obstáculo
@@ -59,7 +60,7 @@ def main():
         object_distance=last_distance, 
         tolerance_distance=5, 
         turn_direction=turn_direction,
-        step_distance=10,
+        step_distance=20,
         turn_angle=10
     )
     
@@ -70,7 +71,8 @@ def main():
         ultrasonic_sensor=ultrasonic_sensor, 
         distance=5, 
         tolerance_distance=25, 
-        min_obstacle_distance=80
+        min_obstacle_distance=80,
+        degrees=90
     )
 
     # print("Second obstacle distance: ", second_obstacle_distance)

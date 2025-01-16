@@ -1,7 +1,7 @@
 import threading
 import math
 
-def find_obstacle(movement, ultrasonic_sensor, threshold=0, step_angle=5, prefer_left=True, up_threshold=0):
+def find_obstacle(movement, ultrasonic_sensor, threshold=0, step_angle=5, prefer_left=True, up_threshold=0, degrees=60):
     """
     Gira 120 grados (60 a un lado y 60 al otro) para buscar el obstáculo más cercano.
     Si encuentra un valor de distancia menor al threshold, se detiene y devuelve el ángulo exacto.
@@ -36,13 +36,15 @@ def find_obstacle(movement, ultrasonic_sensor, threshold=0, step_angle=5, prefer
     distance_thread.start()
 
     try:
-        # Crear la secuencia de ángulos: primero 45 a un lado, luego 45 al otro
+        # Crear la secuencia de ángulos: primero 60 a un lado, luego 60 al otro
         if prefer_left:
-            angles_to_check = list(range(0, -46, -step_angle)) + list(range(0, 46, step_angle))
+            angles_to_check = list(range(0, -degrees-1, -step_angle)) + list(range(-step_angle, degrees+1, step_angle))
             # angles_to_check = list(range(0, -91, -step_angle))
         else:
-            angles_to_check = list(range(0, 46, step_angle)) + list(range(-0, -46, -step_angle))
+            angles_to_check = list(range(0, degrees+1, step_angle)) + list(range(step_angle, -degrees-1, -step_angle))
             # angles_to_check = list(range(0, 91, step_angle))
+
+        print("Angles to check: ", angles_to_check)
 
         for angle in angles_to_check:
             movement.turn(angle - current_angle)
@@ -54,10 +56,12 @@ def find_obstacle(movement, ultrasonic_sensor, threshold=0, step_angle=5, prefer
             if distance is not None and distance < min_distance and distance > up_threshold:
                 min_distance = distance
                 best_angle = current_angle
+                print("Best angle = ", best_angle)
 
             if min_distance < threshold:
                 # print(f"Threshold reached: {min_distance} cm at angle {best_angle}")
                 break
+            
 
         # Regresar al ángulo inicial
         movement.turn(-current_angle)
@@ -70,7 +74,7 @@ def find_obstacle(movement, ultrasonic_sensor, threshold=0, step_angle=5, prefer
 
     return min_distance, best_angle
 
-def follow_obstacle(movement, ultrasonic_sensor, distance, tolerance_distance, min_obstacle_distance=80):
+def follow_obstacle(movement, ultrasonic_sensor, distance, tolerance_distance, min_obstacle_distance=80, degrees=60):
     """
     Sigue un obstáculo a una distancia constante. Si pierde el obstáculo,
     usa last_distance y last_degrees para determinar si se aleja y llama a
@@ -103,11 +107,11 @@ def follow_obstacle(movement, ultrasonic_sensor, distance, tolerance_distance, m
             print("Obstacle lost, searching...")
 
             # Determinar la preferencia de giro basado en los últimos ángulos registrados
-            prefer_left = last_degrees > current_degrees
+            prefer_left = last_degrees <= current_degrees
 
             # Llamar a find_obstacle con la preferencia calculada
             _, best_angle = find_obstacle(
-                movement, ultrasonic_sensor, threshold=best_distance, prefer_left=prefer_left
+                movement, ultrasonic_sensor, threshold=best_distance, prefer_left=prefer_left, degrees=degrees
             )
 
             # Establecer la dirección inicial si aún no se ha establecido
@@ -176,13 +180,13 @@ def avoid_obstacle(movement, ultrasonic_sensor, object_distance, tolerance_dista
             break
         
     # Gira de más para asegurarse que no choque
-    movement.turn(turn_angle)
+    movement.turn(turn_angle*2)
 
     # Caminar hacia delante una cierta distancia
     movement.move(step_distance + object_distance)
 
     # Giramos de vuelta para poder encontrar el segundo obstáculo
-    movement.turn(-turn_angle*2)
+    movement.turn(-turn_angle*3)
     
     return turn_direction
 
@@ -216,7 +220,7 @@ def avoid_second_obstacle(movement, ultrasonic_sensor, object_distance, toleranc
             break
 
     # Giramos un poco más para evitar el obstáculo
-    # movement.turn(turn_angle)
+    movement.turn(turn_angle)
 
     return second_object_distance, turned_degrees
 
