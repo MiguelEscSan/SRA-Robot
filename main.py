@@ -40,6 +40,7 @@ def main():
         TRANSMISSION_RATIO
     )
 
+
     print("Starting competition")
     sound.beep()
 
@@ -64,8 +65,9 @@ def main():
         ultrasonic_sensor,
         first_obstacle_distance,
         first_obstacle_angle,
-        threshold=4,
-        security_distance=15
+        min_obstacle_distance=80,
+        security_distance=20,
+        step_distance=5
     )
 
     print("Last_distance: {:.2f}".format(last_distance))
@@ -85,7 +87,7 @@ def main():
         turn_angle=25,
         step_distance=10,
         threshold=30,
-        first_object_distance=first_obstacle_distance
+        first_object_distance=last_distance
     )
     
     # Cuarto paso: Acercarse hasta el segundo obstáculo hasta una distancia de seguridad
@@ -94,9 +96,9 @@ def main():
         ultrasonic_sensor,
         second_object_distance,
         second_object_angle,
-        threshold=20,
+        min_obstacle_distance=80,
+        security_distance=15,
         step_distance=5,
-        security_distance=15
     )
     
     # Quinto paso: Girar hasta dejar de ver el segundo obstáculo
