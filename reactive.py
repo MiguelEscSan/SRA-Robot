@@ -57,11 +57,9 @@ def find_obstacle(movement, ultrasonic_sensor, down_threshold=10, up_threshold=8
 
             print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
 
-            if distance is not None and distance < min_distance :
+            if distance is not None and down_threshold < distance < up_threshold:
                 min_distance = distance
                 best_angle = current_angle
-
-            if min_distance < up_threshold and min_distance > down_threshold:
                 break
 
         # Regresar al ángulo inicial
@@ -72,6 +70,11 @@ def find_obstacle(movement, ultrasonic_sensor, down_threshold=10, up_threshold=8
         distance_thread.join()
     
     print("----------------------------- Obstacle found -----------------------------")
+
+    if min_distance == float('inf') and best_angle == 0:
+        print("No obstacle found within the specified range.")
+        return None, None
+
 
     return min_distance, best_angle
 
@@ -96,7 +99,7 @@ def follow_obstacle(movement, ultrasonic_sensor, object_distance, object_angle, 
         current_distance = ultrasonic_sensor.distance_centimeters
         object_distance -= step_distance
         
-        if current_distance < security_distance:
+        if current_distance <= security_distance:
             print("Security distance reached")
             movement.stop()
             movement.move(-step_distance)
@@ -107,17 +110,23 @@ def follow_obstacle(movement, ultrasonic_sensor, object_distance, object_angle, 
         # Si la distancia actual es mayor que la distancia a la que se encontraba el objeto más un umbral, se perdió el objeto y se debe encontrar de nuevo
         if current_distance > object_distance + threshold:
             # Se asume que lo va a encontrar en el nuevo barrido, si el sensor va bien
-            current_distance, object_angle = find_obstacle(
-                movement, 
-                ultrasonic_sensor, 
-                down_threshold= object_distance,
-                up_threshold=object_distance + threshold, 
-                step_angle=5
-            )
+            while True:
 
-            if current_distance <= object_distance + threshold:
-                object_distance = current_distance
-                movement.turn(object_angle)
+                current_distance, object_angle = find_obstacle(
+                    movement, 
+                    ultrasonic_sensor, 
+                    down_threshold= object_distance,
+                    up_threshold=object_distance + threshold, 
+                    step_angle=5
+                )
+
+                if current_distance is not None and current_distance <= object_distance + threshold:
+                    object_distance = current_distance
+                    movement.turn(object_angle)
+                    break
+                else:
+                    movement.turn(45)
+                    movement.move(5)                
 
     print("----------------------------- Obstacle followed -----------------------------")
 
@@ -161,15 +170,16 @@ def turn_till_find_second_obstacle(movement, ultrasonic_sensor, turn_angle=25, s
         # TODO mirar como decirle que solo se fije en la siguiente distancia que sea superior a x distancia que representa la primera lata
         second_object_distance, second_object_angle = find_obstacle(movement, ultrasonic_sensor, down_threshold=first_object_distance, up_threshold=80, step_angle=5)
         
-        if second_object_distance > 80:
-            movement.turn(turn_angle)
-            movement.move(step_distance)
-        else:
+        if second_object_distance <= 80 and second_object_distance is not None and second_object_distance >= first_object_distance:
             break
+
+        movement.turn(turn_angle)
+        movement.move(step_distance)
+
 
     return second_object_distance, second_object_angle
 
-def avoid_second_obstacle(movement, ultrasonic_sensor, object_distance, tolerance_distance, turn_direction, turn_angle=15):
+def avoid_second_obstacle(movement, ultrasonic_sensor, object_distance, tolerance_distance, turn_angle=15):
     """
     Evita un obstáculo girando hasta que no haya obstáculo en frente o la distancia sea mayor a un umbral.
     Luego, camina hacia adelante una cierta distancia.
@@ -187,7 +197,8 @@ def avoid_second_obstacle(movement, ultrasonic_sensor, object_distance, toleranc
     turned_degrees = 0
 
     # Girar hasta perder el obstáculo o que la distancia del obstáculo sea mayor a un umbral
-    turn_angle = -turn_angle if turn_direction == "left" else turn_angle
+    # turn_angle = -turn_angle if turn_direction == "left" else turn_angle
+    
     while True:
         movement.turn(turn_angle)
         turned_degrees += turn_angle
@@ -199,7 +210,7 @@ def avoid_second_obstacle(movement, ultrasonic_sensor, object_distance, toleranc
             break
 
     # Giramos un poco más para evitar el obstáculo
-    # movement.turn(turn_angle)
+    movement.turn(turn_angle)
 
     return second_object_distance, turned_degrees
 

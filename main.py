@@ -68,9 +68,7 @@ def main():
         security_distance=15
     )
 
-
     print("Last_distance: {:.2f}".format(last_distance))
-
 
     # Segundo paso: Esquivar el primer obstáculo hacia la izquierda, caminar distancia umbral + distancia obstáculo y girar ciertos grados de vuelta
     avoid_first_obstacle(
@@ -106,8 +104,7 @@ def main():
         movement, 
         ultrasonic_sensor, 
         object_distance=second_object_distance, 
-        tolerance_distance=5, 
-        turn_direction=second_object_angle
+        tolerance_distance=5
     )
     
     # Sexto paso: Caminar hasta ver la línea, detenerse y colocarse correctamente
