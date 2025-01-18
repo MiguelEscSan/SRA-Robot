@@ -3,13 +3,15 @@
 from ev3dev2.sensor import INPUT_1, INPUT_2
 from ev3dev2.sensor.lego import UltrasonicSensor, ColorSensor
 from ev3dev2.sound import Sound
+from ev3dev2.led import Leds
 from ev3dev2.motor import LargeMotor, OUTPUT_B, OUTPUT_C
 from time import time
 from movement import RobotMovement
-from reactive import follow_obstacle, avoid_obstacle, avoid_second_obstacle, find_line
+from reactive import follow_obstacle, avoid_obstacle, find_line, move_untill_found_obstacle
 
 
 def main():
+
     # Inicializar motor
     motor_left = LargeMotor(OUTPUT_C)
     motor_right = LargeMotor(OUTPUT_B)
@@ -18,8 +20,9 @@ def main():
     ultrasonic_sensor = UltrasonicSensor(INPUT_1) 
     color_sensor = ColorSensor(INPUT_2)
 
-    # Inicializar sonido
+    # Inicializar sonido Y leds
     sound = Sound()
+    leds = Leds()
     
     # Parámetros del robot
     WHEEL_DIAMETER = 5.5
@@ -36,69 +39,77 @@ def main():
         SPEED,
         TRANSMISSION_RATIO
     )
-    
+
+
     print("Starting competition")
     sound.beep()
+
+    leds.set_color('LEFT', 'RED')
+    leds.set_color('RIGHT', 'RED')
+
     start_time = time()
     
-    # PRIMER PASO: Encontrar y seguir el obstaculo
-    last_distance, current_degrees, initial_direction = follow_obstacle(
-        movement=movement,
-        ultrasonic_sensor=ultrasonic_sensor, 
-        distance=5, 
-        tolerance_distance=25, 
-        min_obstacle_distance=150,
-        degrees=60
-    )
-    
-    # TODO: Revisar esta función, ya que asume que siempre que se evite un obstáculo, la siguiente distancia será la del segundo obstáculo
-    # SEGUNDO PASO: Evitar la lata y encontrar la segunda lata. Una vez encontrada caminar hacia ella hasta la mitad de la distancia
-    turn_direction = "left" if initial_direction == "right" else "right" if initial_direction == "left" else None
-    turn_direction = avoid_obstacle(
+    #---------------------------------------------------------------------------------------------------
+
+    # Primer paso: Encontrar el primer obstáculo y seguirlo hasta una distancia de seguridad
+    object_distance, _ = follow_obstacle(
         movement, 
-        ultrasonic_sensor, 
-        object_distance=last_distance, 
-        tolerance_distance=5, 
-        turn_direction=turn_direction,
-        step_distance=20,
-        turn_angle=10
+        ultrasonic_sensor,
+        distance=10,
+        tolerance_distance=20,
+        min_obstacle_distance=80
     )
     
+    # Segundo paso: Esquivar el primer obstáculo hacia la izquierda, caminar distancia umbral + distancia obstáculo y girar ciertos grados de vuelta
+    _ = avoid_obstacle(
+        movement,
+        ultrasonic_sensor,
+        object_distance,
+        tolerance_distance=20,
+        turn_direction="left",
+        turn_angle=20,
+        step_distance=15,
+        first_obstacle=True
+    )
     
-    # TERCER PASO:Encontrar el segundo obstáculo y seguirlo
-    last_distance, current_degrees, _ = follow_obstacle(
-        movement=movement,
-        ultrasonic_sensor=ultrasonic_sensor, 
-        distance=5, 
-        tolerance_distance=25, 
-        min_obstacle_distance=80,
-        degrees=90
+    # Tercer paso: Girar y caminar mientras no se haya encontrado el segundo obstáculo hacia la derecha. Girar poco y caminar poco.
+    move_untill_found_obstacle(
+        movement,
+        ultrasonic_sensor,
+        distance=5,
+        degrees=10,
     )
-
-    # print("Second obstacle distance: ", second_obstacle_distance)
-    # print("Current degrees: ", current_degrees)
-
-    # CUARTO PASO: Girar para esquivar el segundo obstáculo
-    _, current_degrees = avoid_second_obstacle(
-        movement, 
-        ultrasonic_sensor, 
-        object_distance=last_distance, 
-        tolerance_distance=5, 
-        turn_direction=turn_direction
+    
+    # Cuarto paso: Acercarse hasta el segundo obstáculo hasta una distancia de seguridad
+    object_distance, _ = follow_obstacle(
+        movement,
+        ultrasonic_sensor,
+        distance=10,
+        tolerance_distance=20,
+        min_obstacle_distance=80
     )
-
-    # QUINTO PASO: Caminar hasta encontrar la línea y girar hacia la dirección inicial
+    
+    # Quinto paso: Girar hasta dejar de ver el segundo obstáculo
+    turned_degrees = avoid_obstacle(
+        movement,
+        ultrasonic_sensor,
+        object_distance,
+        tolerance_distance=20,
+        turn_direction="left",
+        turn_angle=20,
+        step_distance=15,
+        first_obstacle=False
+    )
+    
+    # Sexto paso: Caminar hasta ver la línea, detenerse y colocarse correctamente
     find_line(
         movement, 
         color_sensor, 
-        turned_degrees=current_degrees,
+        turned_degrees,
         step_distance=10,
         threshold=15
     )
-
-    end_time = time()
-    sound.beep()
-    print("Total time: {:.2f} seconds".format(end_time - start_time))   
+    
 
 
 if __name__ == '__main__':
