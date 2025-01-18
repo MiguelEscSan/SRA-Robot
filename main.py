@@ -27,7 +27,7 @@ def main():
     # Parámetros del robot
     WHEEL_DIAMETER = 5.5
     DISTANCE_BETWEEN_WHEELS = 19.79
-    SPEED = 10
+    SPEED = 20
     TRANSMISSION_RATIO = 3
 
     # Clase que maneja el movimiento del robot
@@ -57,7 +57,7 @@ def main():
         ultrasonic_sensor,
         distance=10,
         tolerance_distance=20,
-        min_obstacle_distance=80
+        min_obstacle_distance=50
     )
     
     # Segundo paso: Esquivar el primer obstáculo hacia la izquierda, caminar distancia umbral + distancia obstáculo y girar ciertos grados de vuelta
@@ -67,7 +67,7 @@ def main():
         object_distance,
         tolerance_distance=20,
         turn_direction="left",
-        turn_angle=20,
+        turn_angle=10,
         step_distance=15,
         first_obstacle=True
     )
@@ -76,17 +76,18 @@ def main():
     move_untill_found_obstacle(
         movement,
         ultrasonic_sensor,
-        distance=5,
-        degrees=10,
+        distance=4,
+        degrees=8,
     )
     
     # Cuarto paso: Acercarse hasta el segundo obstáculo hasta una distancia de seguridad
     object_distance, _ = follow_obstacle(
         movement,
         ultrasonic_sensor,
-        distance=10,
-        tolerance_distance=20,
-        min_obstacle_distance=80
+        distance=5,
+        tolerance_distance=15,
+        min_obstacle_distance=60,
+        max_angle=40
     )
     
     # Quinto paso: Girar hasta dejar de ver el segundo obstáculo
@@ -95,8 +96,8 @@ def main():
         ultrasonic_sensor,
         object_distance,
         tolerance_distance=20,
-        turn_direction="left",
-        turn_angle=20,
+        turn_direction="right",
+        turn_angle=10,
         step_distance=15,
         first_obstacle=False
     )
@@ -107,9 +108,20 @@ def main():
         color_sensor, 
         turned_degrees,
         step_distance=10,
-        threshold=15
+        threshold=30
     )
     
+    end_time = time()
+    
+    leds.set_color('LEFT', 'GREEN')
+    leds.set_color('RIGHT', 'GREEN')
+
+    sound.beep()
+
+    print("Competition finished in: {:.2f} seconds".format(end_time - start_time))
+
+    
+
 
 
 if __name__ == '__main__':
