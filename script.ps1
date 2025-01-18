@@ -14,6 +14,6 @@ ssh "${User}@${Robot}" "mkdir -p ${RemoteDir}"
 
 # Copiar los archivos al directorio remoto
 Write-Host "Copiando archivos al directorio remoto..."
-scp movement.py parallel_parking.py "${User}@${Robot}:${RemoteDir}"
+scp movement.py reactive.py main.py "${User}@${Robot}:${RemoteDir}"
 
 Write-Host "Despliegue completado."
