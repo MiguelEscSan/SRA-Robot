@@ -157,7 +157,8 @@ def avoid_obstacle(movement, ultrasonic_sensor, object_distance, tolerance_dista
     if first_obstacle:
         # Caminar hacia delante una cierta distancia
         print("Moving forward after avoiding obstacle...", step_distance, object_distance)
-        movement.move(step_distance + object_distance)
+        # movement.move(step_distance + object_distance)
+        movement.move(object_distance)
 
         # Giramos de vuelta para poder encontrar el segundo obstáculo
         turned_degrees -= turn_angle
