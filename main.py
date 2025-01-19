@@ -7,7 +7,7 @@ from ev3dev2.led import Leds
 from ev3dev2.motor import LargeMotor, OUTPUT_B, OUTPUT_C
 from time import time
 from movement import RobotMovement
-from reactive import follow_obstacle, avoid_obstacle, find_line, move_untill_found_obstacle
+from reactive import follow_obstacle, avoid_obstacle, find_line, move_until_found_obstacle
 
 
 def main():
@@ -73,7 +73,7 @@ def main():
     )
     
     # Tercer paso: Girar y caminar mientras no se haya encontrado el segundo obstáculo hacia la derecha. Girar poco y caminar poco.
-    move_untill_found_obstacle(
+    move_until_found_obstacle(
         movement,
         ultrasonic_sensor,
         distance=4,
@@ -85,7 +85,7 @@ def main():
         movement,
         ultrasonic_sensor,
         distance=5,
-        tolerance_distance=15,
+        tolerance_distance=22,
         min_obstacle_distance=60,
         max_angle=40
     )
@@ -97,7 +97,7 @@ def main():
         object_distance,
         tolerance_distance=20,
         turn_direction="right",
-        turn_angle=10,
+        turn_angle=15,
         step_distance=15,
         first_obstacle=False
     )
@@ -108,7 +108,7 @@ def main():
         color_sensor, 
         turned_degrees,
         step_distance=10,
-        threshold=30
+        threshold=10
     )
     
     end_time = time()

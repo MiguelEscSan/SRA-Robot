@@ -25,8 +25,10 @@ def find_obstacle(movement, ultrasonic_sensor, down_threshold=10, up_threshold=0
         """Hilo que mide la distancia continuamente."""
         while not stop_flag.is_set():
             with distance_lock:
-                shared_distance["distance"] = ultrasonic_sensor.distance_centimeters
-                print("ultrasonic_sensor.distance_centimeters: ", ultrasonic_sensor.distance_centimeters)
+                current_distance = ultrasonic_sensor.distance_centimeters
+                if shared_distance["distance"] is None or current_distance < shared_distance["distance"]:
+                    shared_distance["distance"] = ultrasonic_sensor.distance_centimeters
+                    print("ultrasonic_sensor.distance_centimeters: ", ultrasonic_sensor.distance_centimeters)
 
     stop_flag = threading.Event()
     distance_thread = threading.Thread(target=measure_distance)
@@ -46,6 +48,7 @@ def find_obstacle(movement, ultrasonic_sensor, down_threshold=10, up_threshold=0
             with distance_lock:
                 print("---------------------------------------------")
                 distance = shared_distance["distance"]
+                shared_distance["distance"] = None
 
             if distance is not None and distance < min_distance and distance > up_threshold:
                 min_distance = distance
@@ -104,7 +107,7 @@ def follow_obstacle(movement, ultrasonic_sensor, distance, tolerance_distance, m
             movement.turn(best_angle)
             current_degrees += best_angle
                 
-        if current_distance > tolerance_distance:
+        if current_distance > tolerance_distance and current_distance <= min_obstacle_distance:
             # Si está lejos del obstáculo, avanzar
             print("Too far from obstacle, moving closer...")
             movement.move(distance)  # Avanzar 10 cm
@@ -149,12 +152,14 @@ def avoid_obstacle(movement, ultrasonic_sensor, object_distance, tolerance_dista
         print("Distance: ", distance)
         if distance > object_distance + tolerance_distance:
             break
-        
-    # Gira de más para asegurarse que no choque
-    turned_degrees += turn_angle
-    movement.turn(turn_angle)
+
 
     if first_obstacle:
+        
+        # Gira de más para asegurarse que no choque
+        turned_degrees += turn_angle*3
+        movement.turn(turn_angle*3)
+        
         # Caminar hacia delante una cierta distancia
         print("Moving forward after avoiding obstacle...", step_distance, object_distance)
         # movement.move(step_distance + object_distance)
@@ -163,10 +168,14 @@ def avoid_obstacle(movement, ultrasonic_sensor, object_distance, tolerance_dista
         # Giramos de vuelta para poder encontrar el segundo obstáculo
         turned_degrees -= turn_angle
         movement.turn(-turn_angle*2)
+    else:
+        # Gira de más para asegurarse que no choque
+        turned_degrees += turn_angle
+        movement.turn(turn_angle)
     
     return turned_degrees
 
-def move_untill_found_obstacle(movement, ultrasonic_sensor, distance, degrees, min_obstacle_distance=80, left=False):
+def move_until_found_obstacle(movement, ultrasonic_sensor, distance, degrees, min_obstacle_distance=80, left=False):
     """
     Esta función busca un objeto basado en un umbral y almacena las distancias medidas en cada ángulo.
 
@@ -193,7 +202,7 @@ def move_untill_found_obstacle(movement, ultrasonic_sensor, distance, degrees, m
             
         elif current_distance <= min_obstacle_distance:
             # Si está demasiado cerca del obstáculo, retroceder
-            movement.move(-distance)
+            # movement.move(-distance)
             break
         
     return
@@ -227,7 +236,7 @@ def find_line(movement, color_sensor, turned_degrees, step_distance=15, threshol
             print("Intensidad actual: ", current_intensity)
 
             # Verificar si el cambio en la intensidad supera el umbral
-            if current_intensity > threshold:
+            if current_intensity < threshold:
                 print("Cambio detectado: ")
                 stop_movement = True  # Señal para detener el movimiento
                 break
